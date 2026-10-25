@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es" data-t="calm">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QuestLife · Productividad gamificada</title>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+:root{--bg:#11151f;--sf:#171c2a;--card:#1c2233;--bd:#2b3450;--tx:#e8ebf4;--mu:#9aa4bf;--a:#7aa2ff;--b:#b69cff;--gold:#f2c46d;--in:#131828;--bt:#0b1020}
+[data-t=clean]{--bg:#f3f5fa;--sf:#fff;--card:#fff;--bd:#dde2ee;--tx:#1d2335;--mu:#667089;--a:#3b63d6;--b:#7a5cd6;--gold:#a8650a;--in:#f1f3f9;--bt:#fff}
+[data-t=neon]{--bg:#0e0a1a;--sf:#150f26;--card:#1a1330;--bd:#3a2a63;--tx:#f1e9ff;--mu:#a996cc;--a:#4de3e3;--b:#e873c9;--gold:#ffd166;--in:#120c22;--bt:#0e0a1a}
+body{background:var(--bg);color:var(--tx);font-family:'Chakra Petch',system-ui,sans-serif;line-height:1.5}
+.c{background:var(--card);border:1px solid var(--bd);border-radius:1rem;padding:1.25rem;transition:border-color .2s}
+main .c:hover{border-color:var(--a)}
+.mu{color:var(--mu)}.ac{color:var(--a)}.go{color:var(--gold)}
+.btn{background:var(--a);color:var(--bt);font-weight:600;padding:.5rem 1rem;border-radius:.6rem;transition:filter .2s}
+.btn:hover{filter:brightness(1.12)}
+.in{background:var(--in);border:1px solid var(--bd);border-radius:.6rem;padding:.5rem .7rem;color:var(--tx);width:100%;min-width:0}
+.in:focus,.btn:focus-visible,.tab:focus-visible{outline:2px solid var(--a);outline-offset:1px}
+.tab{display:flex;flex:0 0 auto;flex-direction:column;align-items:center;gap:.1rem;padding:.45rem .8rem;border-radius:.6rem;font-size:.7rem;color:var(--mu);white-space:nowrap}
+.tab.on{background:color-mix(in srgb,var(--a) 16%,transparent);color:var(--a)}
+@media(min-width:1024px){.tab{flex-direction:row;gap:.8rem;font-size:.95rem;padding:.7rem 1rem}}
+.bar{height:.55rem;background:var(--in);border-radius:9px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--a);transition:width .6s}
+.ring-1{--tw-ring-color:var(--a)}
+summary{cursor:pointer;list-style:none;font-weight:600}summary::-webkit-details-marker{display:none}
+.fade{animation:f .25s}@keyframes f{from{opacity:0;transform:translateY(6px)}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.ring-2{--tw-ring-color:var(--a)}
+dialog{color:var(--tx);width:min(24rem,90vw)}dialog::backdrop{background:rgba(0,0,0,.55)}
+</style>
+</head>
+<body>
+<header class="sticky top-0 z-30 flex items-center gap-4 px-6 py-3 border-b" style="background:var(--sf);border-color:var(--bd)">
+  <b class="text-xl">⚔️<span class="hidden sm:inline"> QuestLife</span></b>
+  <div id="hud" class="flex-1 flex items-center justify-end gap-4 text-sm"></div>
+  <select id="th" class="in !w-auto !py-1" onchange="S.theme=this.value;ren()" aria-label="Tema">
+    <option value="calm">Noche</option><option value="clean">Claro</option><option value="neon">Neón</option>
+  </select>
+</header>
+<div class="lg:flex max-w-7xl mx-auto">
+  <nav id="nav" class="fixed bottom-0 inset-x-0 z-30 flex overflow-x-auto border-t lg:border-0 lg:sticky lg:top-20 lg:self-start lg:flex-col lg:w-56 lg:shrink-0 lg:p-4 lg:gap-2 lg:inset-x-auto lg:bottom-auto" style="background:var(--sf);border-color:var(--bd)"></nav>
+  <main class="flex-1 min-w-0 px-5 py-8 pb-28 lg:px-10 lg:pb-12">
+    <h1 id="ttl" class="text-3xl font-bold"></h1><p id="sub" class="mu text-sm mt-1 mb-8"></p>
+    <div id="v"></div>
+  </main>
+</div>
+<dialog id="dg" class="c"></dialog>
+<div id="toast" class="fixed bottom-20 lg:bottom-4 right-4 space-y-2 z-50"></div>
+<footer class="text-center mu text-xs pb-24 lg:pb-8"><button onclick="A.reset()">Reiniciar datos</button></footer>
+
+<script>
+const $=s=>document.querySelector(s),K='questlife1',
+T=(d=new Date())=>new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10),
+ago=n=>T(new Date(Date.now()-n*864e5)),
+esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),
+lv=x=>{let l=1;while(l<40&&x>=need(l+1))l++;return l},need=l=>4*(l-1)*l*(l+1)/3,
+P={Alta:[25,15],Media:[20,10],Baja:[15,5]},
+Q=['Un paso hoy vale más que cien planes mañana.','La constancia vence al talento.','Hazlo ahora, tu yo del futuro te lo agradecerá.','Pequeñas victorias, grandes niveles.','Cada tarea completada es XP para tu vida.'],
+AC=[['🌱','Primer paso','Completa una tarea',s=>s.st.t>=1],['🌅','Madrugador','Completa algo antes de las 8:00',s=>s.st.e>=1],['🔥','Racha de 7 días','7 días seguidos',s=>rst()>=7],['🛡️','Inquebrantable','Marca 25 hábitos',s=>s.st.h>=25],['🎲','Apostador','Gana una apuesta',s=>s.st.bw>=1],['🛍️','Consentido','Canjea un premio',s=>s.st.rd>=1],['⭐','Nivel 5','Alcanza el nivel 5',s=>lv(s.xp)>=5],['💰','Ahorrador','Ten 300 monedas',s=>s.coins>=300]],
+def=()=>({xp:0,coins:50,streak:0,last:'',theme:'calm',tab:'dash',view:'list',cal:T().slice(0,7),sel:'',pj:0,pay:'',bo:{x:0,m:0},inv:[],cl:[],pr:[],cats:['General','Trabajo','Estudio','Salud','Hogar'],fc:'',fi:'',rl:[],rs:0,rd:'',so:'cat',gm:'r',sr:null,sal:80,cb:40,
+ tasks:[],habits:[{id:1,n:'Beber agua',i:'💧',d:[]},{id:2,n:'Meditar',i:'🧘',d:[]},{id:3,n:'Leer 20 min',i:'📚',d:[]}],
+ bets:[],rw:[{id:1,n:'Una partida de Valorant',c:60,i:'🎯'},{id:2,n:'Un episodio de 20 minutos',c:40,i:'📺'},{id:3,n:'10 minutos de Roblox',c:30,i:'🧱'},{id:4,n:'Partida de Box PvP',c:40,i:'🥊'},{id:5,n:'Tridentx35',c:50,i:'🔱'}],
+ log:{},st:{t:0,h:0,bw:0,rd:0,e:0},ach:[]});
+let S;try{S={...def(),...JSON.parse(localStorage.getItem(K))}}catch(e){S=def()}
+if(!S.v){S.v=2;S.rw=def().rw;if(S.theme=='cyber')S.theme='calm'}
+if(S.v<3){S.v=3;S.bets.filter(b=>b.s=='act').forEach(b=>S.coins+=b.a);S.bets=[];S.pr.forEach(p=>p.st=p.st||'prog');[...S.tasks,...S.habits].forEach(x=>{x.cat=x.cat||'General';if(!S.cats.includes(x.cat))S.cats.push(x.cat)})}
+if(S.v<4){S.v=4;S.cl=[]}
+if(S.v<5){S.v=5;S.sal=2*(S.rw.find(r=>r.ref)?.c||40)}
+if(S.v<6){S.v=6;S.cb=S.rw.find(r=>r.ref)?.c||40}
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}},
+toast=m=>{const e=document.createElement('div');e.className='c fade';e.textContent=m;$('#toast').append(e);setTimeout(()=>e.remove(),3200)};
+
+const SEQ='pwmpwupwmwpmwupwpmwg',xpl=n=>4*n*(n+1),
+cbase=()=>S.cb,
+rwd=n=>{if(n==12||n==28)return{k:'u',i:n==12?'🃏':'🍒',t:'Desbloqueas '+(n==12?'Blackjack':'Tragamonedas')};if(n==40)return{k:'g',i:'🏅',t:'You did it'};if(n%2){const v=Math.round(cbase()*[.5,1,2][n<=13?0:n<=26?1:2]);return{k:'c',v,i:'🪙',t:v+' monedas'}}
+ const k=SEQ[n/2-1];return {k,...{p:{i:'🛡️',t:'Protector de racha'},w:{i:'✅',t:'White check: completa 1 rutina'},m:{i:'💰',t:'X2 Dinero por 24 h'}}[k]}},
+pa=()=>S.sal,
+bst=()=>['x','m'].filter(t=>S.bo[t]>Date.now()).map(t=>t=='x'?'⚡ XP x2':'💰 Monedas x2'),
+H={dash:['Panel','Tu resumen y lo que toca hoy'],proj:['Proyectos','Objetivo → subobjetivos → tareas diarias'],tasks:['Tareas','Agrega, ordena y prioriza lo pendiente'],agenda:['Agenda','Pendientes y rutinas de cada día'],habits:['Rutinas','Hábitos que se repiten y alimentan tu racha'],bets:['Casino','Ruleta, Blackjack y Tragamonedas: apuesta con cabeza'],shop:['Tienda','Canjea tus monedas por premios'],inv:['Inventario','Lo que compras y ganas, listo para canjear o usar'],path:['Camino de niveles','Cada nivel desbloquea una recompensa'],stats:['Progreso','Tus números, comparativas de rutinas y logros']},
+pf=o=>`<details class="c mb-4" ${o}><summary>＋ Nuevo proyecto (se guarda como borrador)</summary><div class="grid gap-2 mt-3"><input id=pn class="in" placeholder="Nombre del proyecto"><textarea id=pd class="in" rows=2 placeholder="¿De qué se trata?"></textarea><textarea id=pg class="in" rows=2 placeholder="Objetivo final: ¿qué quieres lograr?"></textarea><textarea id=pw class="in" rows=2 placeholder="Formas de conseguirlo: ideas, estrategias, recursos"></textarea><textarea id=ps class="in" rows=3 placeholder="Subobjetivos, uno por línea (luego les añades tareas diarias)"></textarea><button onclick=A.addPj() class="btn">Guardar borrador</button></div></details>`;
+function gain(xp,co,k){const l0=lv(S.xp),d=T(),y=ago(1),on=t=>S.bo[t]>Date.now();xp*=on('x')?2:1;co*=on('m')?2:1;S.xp+=xp;S.coins+=co;S.log[d]=S.log[d]||{t:0,h:0};S.log[d][k]++;
+ if(S.last!==d){S.streak=S.last===y?S.streak+1:1;S.last=d}
+ if(lv(S.xp)>l0)toast('🎉 ¡Subiste al nivel '+lv(S.xp)+'!')}
+function rb(){let ch=0;S.bets.forEach(b=>{if(b.s!='act')return;
+ if(b.p>=b.n){b.s='win';S.coins+=b.a*2;S.st.bw++;ch=1;toast('🎲 ¡Apuesta ganada! +'+b.a*2+' 🪙')}
+ else if(new Date(b.d)<=new Date()){b.s='lose';ch=1;toast('💀 Apuesta perdida: -'+b.a+' 🪙')}});return ch}
+const chk=()=>AC.forEach((a,i)=>{if(!S.ach.includes(i)&&a[3](S)){S.ach.push(i);S.coins+=10;toast('🏆 Logro: '+a[1]+' (+10 🪙)')}}),
+ren=()=>{sync();rb();chk();save();render()},
+hs=h=>{let n=0,d=new Date();if(!h.d.includes(T(d)))d=new Date(d-864e5);while(h.d.includes(T(d))){n++;d=new Date(d-864e5)}return n};
+
+let rot=0,spin=0,B=null;
+const medal=()=>`<div class="mx-auto flex flex-col items-center justify-center text-center rounded-full font-bold" style="width:9rem;height:9rem;background:radial-gradient(circle at 30% 30%,#fff3b0,#f2c14e 45%,#b8860b);color:#5a3d00;border:4px solid #fff3b0;box-shadow:0 0 24px #f2c14e88"><span class="text-3xl">🏅</span><span class="text-sm uppercase tracking-wide">You did it</span></div>`,
+rr=(a,b)=>{let s=0,n=0;for(const x=new Date(a+'T12:00');T(x)<=b;x.setDate(x.getDate()+1)){const d=T(x);sd(d).forEach(h=>{s++;if(h.d.includes(d))n++})}return s?n/s*100:null},
+rwk=()=>{const t=new Date(),m=new Date(t),l=new Date(t),e=new Date(t),w=(t.getDay()+6)%7;m.setDate(t.getDate()-w);l.setDate(t.getDate()-w-7);e.setDate(t.getDate()-w-1);return[rr(T(m),T()),rr(T(l),T(e))]},
+rmo=()=>{const t=new Date(),y=t.getFullYear(),o=t.getMonth();return[rr(T(new Date(y,o,1)),T()),rr(T(new Date(y,o-1,1)),T(new Date(y,o,0)))]},
+cp=(t,[c,p])=>{const f=v=>v==null?'—':Math.round(v)+' %',d=c==null||p==null?null:Math.round(c-p),rel=d!=null&&p>0?Math.round((c-p)/p*100):null;
+ return `<div class="c"><div class="text-sm mu">${t}</div><div class="text-3xl font-bold my-2" style="color:${!d?'var(--mu)':d>0?'#6fcf97':'#ef6b6b'}">${d==null?'Sin datos':(d>0?'▲ +':d<0?'▼ ':'＝ ')+d+' pts'}</div><div class="text-sm mu">Antes ${f(p)} → ahora ${f(c)}${rel?` (${rel>0?'+':''}${rel} % relativo)`:''}</div><div class="bar mt-3"><i style="width:${c||0}%"></i></div></div>`},
+PV={Baja:1,Media:2,Alta:3},
+wdn=d=>new Date(d+'T12:00').getDay(),
+sch=(h,d)=>(!h.cr||h.cr<=d)&&(!h.wd||!h.wd.length||h.wd.includes(wdn(d))),
+sd=d=>S.habits.filter(h=>sch(h,d)),
+rst=()=>{const a=sd(T());return S.rs+(a.length&&a.every(h=>h.d.includes(T()))?1:0)},
+sync=()=>{const y=ago(1);if(!S.rd)S.rd=y;let c=0;while(S.rd<y&&c++<400){const x=new Date(S.rd+'T12:00');x.setDate(x.getDate()+1);const d=T(x),a=sd(d);S.rd=d;if(!a.length)continue;
+ if(a.every(h=>h.d.includes(d)))S.rs++;else{const i=S.inv.findIndex(z=>z.t=='p');if(i>=0){S.inv.splice(i,1);toast('🛡️ Un protector salvó tu racha')}else S.rs=0}}},
+wdp=k=>[...'LMXJVSD'].map((d,i)=>`<label><input type=checkbox class="w${k}" value=${(i+1)%7} checked> ${d}</label>`).join(''),
+wdv=k=>{const a=[...document.querySelectorAll('.w'+k+':checked')].map(x=>+x.value);return a.length==7?[]:a},
+srt=()=>`<select class="in !w-auto" onchange="S.so=this.value;render()" aria-label="Ordenar">${[['cat','📂 Por categoría'],['due','⏳ Fecha límite'],['imp','🔥 Prioridad'],['mix','⚖️ Prioridad + fecha']].map(([k,n])=>`<option value=${k} ${S.so==k?'selected':''}>${n}`).join('')}</select>`,
+ord=a=>{const o=S.so,u=t=>t.due?dl(t):99,v=t=>PV[t.p];return a.slice().sort((x,y)=>o=='imp'?v(y)-v(x)||u(x)-u(y):o=='mix'?(u(x)-v(x)*3)-(u(y)-v(y)*3):u(x)-u(y)||v(y)-v(x))},
+cd=()=>({r:Math.floor(Math.random()*13),s:'♠♥♦♣'[Math.floor(Math.random()*4)]}),
+tot=a=>{let t=a.reduce((s,c)=>s+(c.r?Math.min(c.r+1,10):11),0),n=a.filter(c=>!c.r).length;while(t>21&&n-->0)t-=10;return t},
+cs=(c,h)=>`<span class="c !p-3 mx-1 inline-block text-xl font-bold" style="color:${'♥♦'.includes(c.s)?'#ef6b6b':'inherit'}">${h?'?':['A','2','3','4','5','6','7','8','9','10','J','Q','K'][c.r]+c.s}</span>`,
+bje=r=>{B.end=1;const p=tot(B.p),d=tot(B.d);let pay=0,m;
+ if(r&&d!=21){pay=Math.floor(B.bet*2.5);m='🃏 ¡Blackjack!'}else if(p>21)m='💥 Te pasaste';else if(d>21||p>d){pay=B.bet*2;m='🎉 Ganaste'}else if(p==d){pay=B.bet;m='🤝 Empate'}else m='💀 Gana la casa';
+ S.coins+=pay;if(pay>B.bet)S.st.bw++;B.msg=m+(pay>B.bet?' +'+(pay-B.bet)+' 🪙':pay==B.bet?'':' -'+B.bet+' 🪙');ren()};
+const IM={Alta:'🔴',Media:'🟡',Baja:'🟢'},
+dl=t=>t.due?Math.round((new Date(t.due)-new Date(T()))/864e5):null,
+ask=(m,cb,v)=>{const d=$('#dg');d.innerHTML=`<p class="mb-4">${m}</p>${v!==undefined?`<input id=dv class="in mb-4" value="${esc(v)}">`:''}<div class="flex gap-3 justify-end"><button class="mu px-3" onclick="$('#dg').close()">Cancelar</button><button class="btn" id=dok>Aceptar</button></div>`;d.showModal();$('#dok').onclick=()=>{const x=v!==undefined?$('#dv').value.trim():1;d.close();cb(x)}},
+fl=(a,imp)=>a.filter(x=>(!S.fc||(x.cat||'General')==S.fc)&&(!imp||!S.fi||x.p==S.fi)),
+flt=(imp,so)=>`<div class="flex flex-wrap gap-3 mb-6"><select class="in !w-auto" onchange="S.fc=this.value;render()" aria-label="Categoría"><option value=''>📂 Todas las categorías${S.cats.map(c=>`<option ${S.fc==c?'selected':''}>${esc(c)}`).join('')}</select>${imp?`<select class="in !w-auto" onchange="S.fi=this.value;render()" aria-label="Importancia"><option value=''>⭐ Toda importancia${Object.entries(IM).map(([k,e])=>`<option value=${k} ${S.fi==k?'selected':''}>${e} ${k}`).join('')}</select>`:''}${so?srt():''}</div>`,
+grp=(a,f)=>{const g={};a.forEach(x=>(g[x.cat||'General']=g[x.cat||'General']||[]).push(x));return Object.keys(g).map(c=>`<div class="mb-6"><h3 class="mu text-sm font-semibold mb-3">📂 ${esc(c)}</h3><div class="space-y-3">${g[c].map(x=>f(x)).join('')}</div></div>`).join('')||'<p class="mu text-sm mb-6">Nada por aquí todavía.</p>'};
+const A={
+ tab(t){S.tab=t;ren();$('#v').classList.remove('fade');void $('#v').offsetWidth;$('#v').classList.add('fade')},
+ v(x){S.view=x;ren()},
+ cal(d){const[y,m]=S.cal.split('-').map(Number);S.cal=T(new Date(y,m-1+d,1)).slice(0,7);ren()},
+ sel(d){S.sel=d;ren()},
+ addT(){const t=$('#tt').value.trim();if(!t)return toast('Escribe un título');
+  S.tasks.push({id:Date.now(),t,ds:$('#td').value,due:$('#tf').value,p:$('#tp').value,cat:$('#tc').value||'General',done:0});ren()},
+ done(id){const k=S.tasks.find(x=>x.id==id);if(!k||k.done)return;k.done=1;const[x,c]=P[k.p];gain(x,c,'t');S.st.t++;
+  if(new Date().getHours()<8)S.st.e++;S.bets.forEach(b=>{if(b.s=='act')b.p++});toast('+'+x+' XP · +'+c+' 🪙');ren()},
+ delT(id){S.tasks=S.tasks.filter(x=>x.id!=id);ren()},
+ hab(id){const h=S.habits.find(x=>x.id==id),d=T();if(h.d.includes(d)||!sch(h,d))return;h.d.push(d);gain(10,5,'h');S.st.h++;toast('+10 XP · +5 🪙');ren()},
+ addH(){const n=$('#hn').value.trim();if(!n)return toast('Escribe el nombre de la rutina');S.habits.push({id:Date.now(),n,i:'✅',cat:$('#hc').value||'General',wd:wdv('x'),cr:T(),d:[]});ren()},
+ delH(id){S.habits=S.habits.filter(x=>x.id!=id);ren()},
+ buy(id){const r=S.rw.find(x=>x.id==id);if(S.coins<r.c)return toast('Te faltan '+(r.c-S.coins)+' 🪙');S.coins-=r.c;S.inv.push({t:'v',n:r.n,i:r.i});toast('🛍️ Comprado: '+r.n+'. Canjéalo en Inventario');ren()},
+ addR(){const n=$('#rn').value.trim(),c=+$('#rc').value;if(n&&c>0){S.rw.push({id:Date.now(),n,c,i:'🎁'});ren()}else toast('Indica nombre y costo')},
+ delR(id){S.rw=S.rw.filter(x=>x.id!=id);ren()},
+ price(id){const r=S.rw.find(x=>x.id==id);ask('Nuevo precio de «'+esc(r.n)+'» (monedas)',v=>{v=Math.round(+v);if(v>0){r.c=v;ren()}},r.c)},
+ pay(){if(S.pay==T())return;const a=pa();S.pay=T();S.coins+=a;toast('💰 Sueldo diario: +'+a+' 🪙');ren()},
+ claim(l){const r=rwd(l);if(lv(S.xp)<l||S.cl.includes(l))return;S.cl.push(l);
+  if(r.k=='g'){S.medal=1;toast('🏅 ¡You did it!')}else if(r.k=='c'){S.coins+=r.v;toast('🪙 +'+r.v+' monedas')}else{S.inv.push({t:r.k,n:r.t,i:r.i});toast('🎒 Guardado en Inventario')}ren()},
+ use(i){const it=S.inv[i];if(!it||it.t=='p')return;
+  if(it.t=='w'){const a=sd(T()).filter(h=>!h.d.includes(T()));if(!a.length)return toast('No tienes rutinas pendientes hoy');const d=$('#dg');
+   d.innerHTML=`<p class="mb-4">✅ ¿Qué rutina completar hoy?</p><select id=wc class="in mb-4">${a.map(h=>`<option value=${h.id}>${esc(h.n)}`).join('')}</select><div class="flex gap-3 justify-end"><button class="mu px-3" onclick="$('#dg').close()">Cancelar</button><button class="btn" id=dok>Usar</button></div>`;d.showModal();
+   $('#dok').onclick=()=>{const id=+$('#wc').value;d.close();const j=S.inv.indexOf(it);if(j>=0){S.inv.splice(j,1);A.hab(id)}};return}
+  if(it.t=='v'){S.st.rd++;toast('🎟️ ¡Canjeado: '+it.n+'!')}else{S.bo[it.t]=Math.max(Date.now(),S.bo[it.t])+864e5;toast('✨ Potenciador activo por 24 h')}
+  S.inv.splice(i,1);ren()},
+ open(id){S.pj=id;render()},
+ sal(){ask('Sueldo diario (monedas)',v=>{v=Math.round(+v);if(v>=0){S.sal=v;ren()}},S.sal)},
+ gm(k){S.gm=k;render()},
+ goR(id){S.fc=S.habits.find(x=>x.id==id).cat||'';A.tab('habits')},
+ bjS(){if(B&&!B.end)return;const a=Math.floor(+$('#ba').value);if(!(a>0))return toast('Escribe cuántas monedas apostar');if(a>S.coins)return toast('No tienes suficientes monedas');
+  S.coins-=a;B={bet:a,p:[cd(),cd()],d:[cd(),cd()],end:0};if(tot(B.p)==21)bje(1);else ren()},
+ bjH(){if(!B||B.end)return;B.p.push(cd());if(tot(B.p)>21)bje();else ren()},
+ bjT(){if(!B||B.end)return;while(tot(B.d)<17)B.d.push(cd());bje()},
+ slot(){if(spin)return;const a=Math.floor(+$('#ba').value);if(!(a>0))return toast('Escribe cuántas monedas apostar');if(a>S.coins)return toast('No tienes suficientes monedas');
+  spin=1;const Y=['🍒','🍋','🔔','💎','7️⃣'],rn=()=>Y[Math.floor(Math.random()*5)],r=[rn(),rn(),rn()],el=$('#rl'),iv=setInterval(()=>{el.textContent=[rn(),rn(),rn()].join(' ')},90);
+  setTimeout(()=>{clearInterval(iv);spin=0;S.sr=r;const k=new Set(r).size,mu=k==1?10:k==2?1:0;S.coins+=a*mu-a;if(mu>1)S.st.bw++;
+   toast(mu>1?`🎉 ¡Premio gordo! +${a*9} 🪙`:mu?'🤝 Dos iguales: recuperas tu apuesta':`💀 Sin suerte: -${a} 🪙`);ren()},1400)},
+ start(p){S.pr.find(x=>x.id==p).st='prog';toast('🚀 Proyecto en progreso');ren()},
+ addC(){ask('Nueva categoría',n=>{if(n&&!S.cats.includes(n)){S.cats.push(n);ren()}},'')},
+ delC(c){S.cats=S.cats.filter(x=>x!=c);if(S.fc==c)S.fc='';ren()},
+ reset(){ask('¿Borrar TODOS tus datos y empezar de cero?',()=>{try{localStorage.removeItem(K)}catch(e){}S=def();S.v=6;rot=0;spin=0;B=null;save();render();toast('Datos reiniciados')})},
+ play(c){if(spin)return;c=c||(Math.random()<.5?'r':'n');const a=Math.floor(+$('#ba').value);if(!(a>0))return toast('Escribe cuántas monedas apostar');if(a>S.coins)return toast('No tienes suficientes monedas');
+  spin=1;const w=Math.random()<.5?'r':'n',k=Math.floor(Math.random()*9)*2+(w=='r'?0:1),el=$('#wh');
+  rot=Math.ceil(rot/360)*360+1800+350-k*20;el.style.transition='transform 3s cubic-bezier(.2,.8,.2,1)';el.style.transform=`rotate(${rot}deg)`;
+  setTimeout(()=>{spin=0;const win=w==c,nm=w=='r'?'rojo':'negro';if(win){S.coins+=a;S.st.bw++}else S.coins=Math.max(0,S.coins-a);
+   S.rl.unshift({c,w,a,win});S.rl=S.rl.slice(0,8);toast(win?`🎉 Salió ${nm}: +${a} 🪙`:`💀 Salió ${nm}: -${a} 🪙`);ren()},3200)},
+ addPj(){const n=$('#pn').value.trim(),g=$('#pg').value.trim();if(!n||!g)return toast('Pon un nombre y un objetivo');
+  const id=Date.now();S.pr.push({id,n,st:'draft',d:$('#pd').value.trim(),g,w:$('#pw').value.trim(),subs:$('#ps').value.split('\n').map(x=>x.trim()).filter(Boolean).map((x,i)=>({id:id+i+1,n:x,done:0}))});S.pj=id;ren()},
+ addSub(p){ask('Nuevo subobjetivo',n=>{if(n){S.pr.find(x=>x.id==p).subs.push({id:Date.now(),n,done:0});ren()}},'')},
+ subDone(p,s){const pr=S.pr.find(x=>x.id==p),sb=pr.subs.find(x=>x.id==s);if(sb.done||pr.st!='prog')return;sb.done=1;gain(50,25,'t');toast('🏁 Subobjetivo logrado: +50 XP · +25 🪙');
+  if(pr.subs.every(x=>x.done)){pr.st='done';gain(150,75,'t');toast('🏆 ¡Proyecto completado! +150 XP · +75 🪙')}ren()},
+ addPT(p,s){const n=$('#n'+s).value.trim();if(!n)return toast('Escribe la tarea');const pr=S.pr.find(x=>x.id==p),sb=pr.subs.find(x=>x.id==s),rep=$('#r'+s).value==1;if(pr.st!='prog')return toast('Inicia el proyecto primero');if(!S.cats.includes(pr.n))S.cats.push(pr.n);
+  if(rep)S.habits.push({id:Date.now(),n,i:'🎯',cat:pr.n,wd:wdv('p'+s),cr:T(),d:[],pj:p,sb:s});
+  else S.tasks.push({id:Date.now(),t:n,ds:sb.n,due:$('#f'+s).value,p:'Media',cat:pr.n,done:0,pj:p,sb:s});
+  toast(rep?'🔁 Añadida a tus Rutinas':'📅 Añadida a tu Agenda');ren()},
+ delPj(p){ask('¿Eliminar el proyecto y sus tareas?',()=>{S.tasks=S.tasks.filter(t=>t.pj!=p);S.habits=S.habits.filter(h=>h.pj!=p);S.pr=S.pr.filter(x=>x.id!=p);S.pj=0;ren()})}
+};
+
+const ti=t=>{const n=dl(t),c=n==null?'Sin fecha':n<0?'Vencida':'Días restantes: '+n;return `<div class="c !p-4 flex items-center gap-4 ${t.done?'opacity-50':''}"><input type=checkbox ${t.done?'checked disabled':''} onchange="A.done(${t.id})" class="w-5 h-5 shrink-0" style="accent-color:var(--a)" aria-label="Completar"><div class="flex-1 min-w-0"><div class="font-semibold ${t.done?'line-through':''}">${esc(t.t)}<span class="mu font-normal"> - ${c}</span></div><div class="text-xs mu mt-1">📂 ${esc(t.cat||'General')}${t.ds?' · '+esc(t.ds):''}${t.due?' · 📅 '+t.due:''}</div></div><span title="${t.p}">${IM[t.p]} <span class="text-xs mu hidden sm:inline">${t.p}</span></span><button onclick="A.delT(${t.id})" class="mu" aria-label="Eliminar">✕</button></div>`};
+const ri=(h,d=T(),lk)=>{const dn=h.d.includes(d),ok=sch(h,d),dy=h.wd&&h.wd.length?h.wd.map(w=>'DLMXJVS'[w]).join(' '):'Todos los días';return `<div class="c !p-4 flex items-center gap-4 ${ok?'':'opacity-50'}"><input type=checkbox ${dn?'checked':''} ${dn||d!=T()||!ok?'disabled':''} onchange="A.hab(${h.id})" class="w-5 h-5 shrink-0" style="accent-color:var(--a)" aria-label="Completar"><div class="flex-1 min-w-0"><div class="font-semibold ${dn?'line-through opacity-60':''}">${esc(h.n)}</div><div class="text-xs mu mt-1">🔁 Rutina · ${dy}${ok?'':' · no toca este día'}</div></div>${lk?`<button onclick="A.goR(${h.id})" class="mu" title="Ver en Rutinas" aria-label="Ver en Rutinas">↗</button>`:''}<button onclick="A.delH(${h.id})" class="mu" aria-label="Eliminar">✕</button></div>`};
+
+const V={
+proj(){const pr=S.pr.find(x=>x.id==S.pj);
+ if(!pr){const card=p=>{const n=p.subs.filter(s=>s.done).length,t=p.subs.length;return `<button onclick="A.open(${p.id})" class="c text-left"><b>📁 ${esc(p.n)}</b><div class="text-sm mu my-3 truncate">🎯 ${esc(p.g)}</div><div class="bar"><i style="width:${t?n/t*100:0}%"></i></div><div class="text-xs mu mt-2">${n}/${t} subobjetivos</div></button>`},
+  sec=(t,st)=>{const a=S.pr.filter(p=>(p.st||'prog')==st);return a.length?`<h2 class="font-bold text-lg mb-4 mt-8">${t}</h2><div class="grid sm:grid-cols-2 gap-6">${a.map(card).join('')}</div>`:''};
+  return pf(S.pr.length?'':'open')+sec('🚀 En progreso','prog')+sec('📝 Borradores (pendientes de iniciar)','draft')+sec('🏆 Completados','done')}
+ const n=pr.subs.filter(s=>s.done).length,t=pr.subs.length,tod=T(),st=pr.st||'prog',lab={draft:'📝 Borrador',prog:'🚀 En progreso',done:'🏆 Completado'}[st];
+ return `<button onclick="A.open(0)" class="mu mb-4">‹ Todos los proyectos</button>
+<div class="c mb-6"><div class="flex justify-between items-start gap-3"><div><b class="text-xl">📁 ${esc(pr.n)}</b><span class="text-xs px-2 py-1 rounded-full ml-3" style="background:var(--in)">${lab}</span></div><button onclick="A.delPj(${pr.id})" aria-label="Eliminar proyecto">🗑️</button></div><p class="text-sm mu mt-2">${esc(pr.d)}</p><p class="mt-4">🎯 <b>Objetivo:</b> ${esc(pr.g)}</p>${pr.w?`<p class="mt-2 text-sm">🧭 <b>Cómo lograrlo:</b> ${esc(pr.w)}</p>`:''}<div class="bar mt-4"><i style="width:${t?n/t*100:0}%"></i></div><div class="text-xs mu mt-2">${n}/${t} subobjetivos logrados</div>${st=='draft'?`<button onclick="A.start(${pr.id})" class="btn mt-4">▶ Iniciar proyecto</button><p class="text-xs mu mt-2">Al iniciarlo podrás añadir tareas y aparecerá En progreso y en tu Agenda.</p>`:''}</div>
+${pr.subs.map(s=>`<div class="c mb-6"><div class="flex justify-between items-center gap-3"><b>🚩 ${esc(s.n)}</b>${s.done?'<span class="ac text-sm">✓ Logrado</span>':st=='prog'?`<button onclick="A.subDone(${pr.id},${s.id})" class="btn !py-1 text-sm">Marcar logrado</button>`:''}</div>${st=='draft'?'':`<div class="space-y-3 my-4">${S.habits.filter(h=>h.sb==s.id).map(h=>ri(h,T(),1)).join('')}${S.tasks.filter(k=>k.sb==s.id).map(k=>ti(k)).join('')}</div>${st=='prog'?`<div class="flex flex-wrap gap-3"><input id=n${s.id} class="in flex-1" placeholder="Nueva tarea de este subobjetivo"><select id=r${s.id} class="in !w-auto"><option value=1>🔁 Rutina<option value=0>📅 Tarea con fecha</select><input id=f${s.id} type=date class="in !w-auto" value="${tod}"><button onclick="A.addPT(${pr.id},${s.id})" class="btn">＋</button><div class="w-full flex flex-wrap gap-4 text-sm mu">Días de la rutina: ${wdp('p'+s.id)}</div></div>`:''}`}</div>`).join('')}
+${st=='done'?'':`<button onclick="A.addSub(${pr.id})" class="btn">＋ Subobjetivo</button>`}`},
+path(){const l=lv(S.xp);
+ return `<div class="c mb-6"><div class="flex flex-wrap justify-between gap-2"><b class="text-xl">Nivel ${l} / 40</b><span class="mu text-sm">${S.xp} XP · el nivel 40 se alcanza con ${need(40)} XP</span></div></div>
+<div class="grid lg:grid-cols-2 gap-4">${Array.from({length:40},(_,i)=>i+1).map(n=>{const r=rwd(n),ok=l>=n,cl=S.cl.includes(n)||(r.k=='u'&&ok);return `<div class="c !p-4 flex items-center gap-4 ${ok?'':'opacity-60'}"><div class="text-3xl">${r.i}</div><div class="flex-1"><b>Nivel ${n}</b><div class="text-sm mu">${r.t}</div></div>${cl?`<span class="ac text-sm">✓ ${r.k=='u'?'Desbloqueado':'Reclamado'}</span>`:ok?`<button onclick="A.claim(${n})" class="btn">Reclamar</button>`:`<span class="mu text-sm">🔒 ${need(n)-S.xp} XP</span>`}</div>`}).join('')}</div>`},
+inv(){const lab={v:'Canjear',m:'Activar 24 h',x:'Activar 24 h',w:'Usar'};
+ return `<div class="grid lg:grid-cols-3 gap-6 mb-6"><div class="c"><div class="text-sm mu">🛡️ Protectores de racha</div><div class="text-2xl font-bold mt-1">${S.inv.filter(x=>x.t=='p').length}</div><p class="text-xs mu mt-2">Se usan solos si fallas un día de rutinas.</p></div><div class="c"><div class="text-sm mu">✅ White checks</div><div class="text-2xl font-bold mt-1">${S.inv.filter(x=>x.t=='w').length}</div></div><div class="c"><div class="text-sm mu">✨ Activos</div><div class="mt-1">${bst().join(' · ')||'Ninguno'}</div></div></div>
+<div class="c"><h2 class="font-bold text-lg mb-4">Objetos</h2><div class="space-y-3">${S.inv.map((it,i)=>it.t=='p'?'':`<div class="flex justify-between items-center gap-3"><span>${it.i} ${esc(it.n)}</span><button onclick="A.use(${i})" class="btn !py-1 text-sm">${lab[it.t]}</button></div>`).join('')||'<p class="mu text-sm">Vacío. Compra en la Tienda o reclama recompensas en Niveles.</p>'}</div></div>${S.medal?`<div class="c mt-6 text-center"><h2 class="font-bold text-lg mb-4">🏆 Trofeos</h2>${medal()}</div>`:''}`},
+dash(){const l=lv(S.xp),p=Math.min(100,(S.xp-need(l))/(need(l+1)-need(l))*100),td=ord(S.tasks.filter(t=>!t.pj&&!t.done)),hr=sd(T()),nx=Array.from({length:40},(_,i)=>i+1).find(n=>!S.cl.includes(n)&&rwd(n).k!='u'),ok=S.pay==T();
+ return `<div class="grid lg:grid-cols-3 gap-6"><div class="c lg:col-span-2"><div class="flex justify-between items-end"><b class="text-2xl">Nivel ${l}${l>=40?' (máximo)':''}</b><span class="mu text-sm">${S.xp-need(l)} / ${xpl(l)} XP</span></div><div class="bar my-4"><i style="width:${p}%"></i></div><p class="text-sm mu">${!nx?'Completaste todo el camino 👑':l>=nx?'🎁 Tienes una recompensa lista en Niveles':`Próxima recompensa (nivel ${nx}): ${rwd(nx).i} ${rwd(nx).t}`}</p></div>
+<div class="c text-center"><div class="text-sm mu">Sueldo diario</div><button onclick="A.sal()" class="text-2xl go font-bold my-2" title="Editar sueldo diario">🪙 ${pa()} ✏️</button><button onclick=A.pay() class="btn w-full ${ok?'opacity-40':''}">${ok?'✓ Cobrado hoy':'Cobrar'}</button></div>
+<div class="c lg:col-span-2"><div class="flex flex-wrap justify-between items-center gap-3 mb-4"><h2 class="font-bold text-lg">✅ To-Do · pendientes (${td.length})</h2>${srt()}</div><div class="space-y-3">${td.slice(0,8).map(t=>ti(t)).join('')||'<p class="mu text-sm">Nada pendiente 🎉</p>'}</div>${td.length>8?`<button onclick="A.tab('tasks')" class="ac text-sm mt-4">Ver las ${td.length} tareas ›</button>`:''}</div>
+<div class="c"><h2 class="font-bold text-lg mb-1">🔁 Rutinas de hoy</h2><p class="text-xs mu mb-4">🔥 Racha: ${rst()} días · 🛡️ ${S.inv.filter(x=>x.t=='p').length} protectores</p><div class="space-y-3">${hr.map(h=>ri(h)).join('')||'<p class="mu text-sm">Hoy no tienes rutinas programadas.</p>'}</div></div>
+<div class="c lg:col-span-3 flex flex-wrap gap-x-8 gap-y-2 text-sm"><span>🏆 Logros: ${S.ach.length}/${AC.length}</span><span class="mu italic">${Q[new Date().getDate()%Q.length]}</span></div></div>`},
+tasks(){const P0=ord(fl(S.tasks.filter(t=>!t.pj&&!t.done),1)),D0=fl(S.tasks.filter(t=>!t.pj&&t.done),1);
+ return `<details class="c mb-6" open><summary>＋ Nueva tarea</summary><div class="grid sm:grid-cols-6 gap-3 mt-4"><input id=tt class="in sm:col-span-3" placeholder="Nombre de la tarea"><input id=td class="in sm:col-span-3" placeholder="Descripción (opcional)"><input id=tf type=date class="in sm:col-span-2" value="${T()}"><select id=tp class="in sm:col-span-2"><option value=Alta>🔴 Alta<option value=Media selected>🟡 Media<option value=Baja>🟢 Baja</select><select id=tc class="in sm:col-span-2">${S.cats.map(c=>`<option>${esc(c)}`).join('')}</select><button onclick=A.addT() class="btn sm:col-span-6">＋ Agregar tarea</button></div></details>
+<div class="c mb-6"><div class="flex flex-wrap items-center gap-3"><b>📂 Categorías</b>${S.cats.map(c=>`<span class="px-3 py-1 rounded-full text-sm" style="background:var(--in)">${esc(c)} <button onclick="A.delC(this.dataset.c)" data-c="${esc(c)}" class="mu" aria-label="Quitar">×</button></span>`).join('')}<button onclick=A.addC() class="ac text-sm">＋ Nueva</button></div></div>
+${flt(1,1)}${S.so=='cat'?grp(P0,ti):`<div class="space-y-3 mb-6">${P0.map(t=>ti(t)).join('')||'<p class="mu text-sm">Nada pendiente 🎉</p>'}</div>`}${D0.length?`<details class="c"><summary>✓ Completadas (${D0.length})</summary><div class="space-y-3 mt-4">${D0.map(t=>ti(t)).join('')}</div></details>`:''}`},
+agenda(){const[y,m]=S.cal.split('-').map(Number),f=(new Date(y,m-1,1).getDay()+6)%7,n=new Date(y,m,0).getDate(),s=S.sel||T(),TS=fl(S.tasks,1);let c='<i></i>'.repeat(f);
+ for(let d=1;d<=n;d++){const k=`${S.cal}-${String(d).padStart(2,'0')}`,ts=TS.filter(t=>t.due==k),pe=ts.filter(t=>!t.done),col=(f+d-1)%7,hu=Math.round(140-((pe.reduce((a,t)=>a+PV[t.p],0)/(pe.length||1))-1)*70);
+  c+=`<button onclick="A.sel('${k}')" class="relative group c !p-2 h-20 text-left ${k==s?'ring-2':''}" style="${pe.length?`background:hsl(${hu} 55% 55% / .24);border-color:hsl(${hu} 55% 55% / .7)`:''}"><span class="${k==T()?'ac font-bold':''}">${d}</span>${ts.length?`<div class="text-[11px] mt-1">${pe.length?'⏰ '+pe.length:'✓'}</div><div class="hidden group-hover:block absolute z-40 top-full mt-1 w-56 p-3 rounded-lg text-xs space-y-2 pointer-events-none ${col>3?'right-0':'left-0'}" style="background:var(--sf);border:1px solid var(--bd);box-shadow:0 8px 24px #0006">${ts.map(t=>`<div>${IM[t.p]} <b>${esc(t.t)}</b>${t.done?' ✓':''}<div class="mu">${esc(t.cat)}${t.ds?' · '+esc(t.ds):''}</div></div>`).join('')}</div>`:''}</button>`}
+ return `${flt(1,1)}<div class="c mb-8"><div class="flex justify-between items-center mb-4"><button onclick="A.cal(-1)" class="btn">‹</button><b class="capitalize text-lg">${new Date(y,m-1).toLocaleDateString('es',{month:'long',year:'numeric'})}</b><button onclick="A.cal(1)" class="btn">›</button></div><div class="grid grid-cols-7 gap-2 text-center text-xs mu mb-2">${[...'LMXJVSD'].map(d=>`<i>${d}</i>`).join('')}</div><div class="grid grid-cols-7 gap-2">${c}</div><p class="text-xs mu mt-4">Color según la prioridad media de las tareas del día (🟢 baja → 🔴 alta) · pasa el cursor para ver el detalle</p></div>
+<h2 class="font-bold text-lg mb-4">📅 ${s}</h2><h3 class="mu text-sm mb-3">Tareas</h3>${grp(TS.filter(t=>t.due==s),ti)}<h3 class="mu text-sm mb-3 mt-8">Rutinas</h3>${grp(fl(sd(s)),h=>ri(h,s))}`},
+habits(){return `<details class="c mb-6" open><summary>＋ Nueva rutina</summary><div class="flex flex-wrap gap-3 mt-4"><input id=hn class="in flex-1" placeholder="Ej. Gimnasio"><select id=hc class="in !w-auto">${S.cats.map(c=>`<option>${esc(c)}`).join('')}</select><div class="w-full flex flex-wrap gap-4 mu text-sm">Días: ${wdp('x')}</div><button onclick=A.addH() class="btn">＋ Agregar rutina</button></div></details>${flt()}${grp(fl(S.habits),h=>ri(h))}`},
+bets(){const g=S.gm||'r',G=[['r','🎰','Ruleta',1],['b','🃏','Blackjack',12],['s','🍒','Tragamonedas',28]],l=lv(S.xp),U=G.find(x=>x[0]==g)[3];
+ return `<div class="flex flex-wrap gap-3 mb-6">${G.map(([k,i,n,u])=>`<button onclick="A.gm('${k}')" class="tab ${g==k?'on':''}" ${l<u?'disabled style="opacity:.5"':''}>${i} ${n}${l<u?' 🔒 Nv '+u:''}</button>`).join('')}</div>${l<U?'<p class="mu">Juego bloqueado.</p>':V[{r:'rul',b:'bj',s:'sl'}[g]]()}`},
+bj(){const e=!B||B.end;
+ return `<div class="c text-center max-w-xl mx-auto"><h2 class="font-bold text-lg mb-4">🃏 Blackjack</h2>${B?`<div class="mb-4"><div class="text-sm mu mb-2">Crupier${B.end?' ('+tot(B.d)+')':''}</div>${B.d.map((c,i)=>cs(c,!B.end&&i)).join('')}</div><div class="mb-4"><div class="text-sm mu mb-2">Tú (${tot(B.p)})</div>${B.p.map(c=>cs(c)).join('')}</div>${B.end?`<p class="font-semibold mb-4">${B.msg}</p>`:''}`:'<p class="mu mb-4">Llega a 21 sin pasarte. El blackjack paga 3:2.</p>'}${e?`<input id=ba type=number min=1 class="in text-center mb-4" placeholder="Monedas a apostar 🪙"><button onclick=A.bjS() class="btn w-full">Repartir</button>`:`<div class="grid grid-cols-2 gap-3"><button onclick=A.bjH() class="btn">Pedir</button><button onclick=A.bjT() class="btn">Plantarse</button></div>`}</div>`},
+sl(){return `<div class="c text-center max-w-xl mx-auto"><h2 class="font-bold text-lg mb-4">🍒 Tragamonedas</h2><div id=rl class="text-6xl mb-6">${(S.sr||['🍒','🍋','🔔']).join(' ')}</div><input id=ba type=number min=1 class="in text-center mb-4" placeholder="Monedas a apostar 🪙"><button onclick=A.slot() class="btn w-full !py-3">🎰 Girar</button><p class="text-xs mu mt-4">3 iguales: x10 · 2 iguales: recuperas tu apuesta · ninguno: pierdes.</p></div>`},
+rul(){return `<div class="grid lg:grid-cols-2 gap-6"><div class="c text-center"><div class="relative w-60 h-60 mx-auto my-4"><div class="absolute -top-3 left-1/2 -translate-x-1/2 text-2xl z-10">▼</div><div id=wh class="w-full h-full rounded-full border-4" style="border-color:var(--bd);background:repeating-conic-gradient(#d64545 0 20deg,#1a1a22 20deg 40deg);transform:rotate(${rot}deg)"></div></div>
+<input id=ba type=number min=1 class="in text-center my-4" placeholder="Monedas a apostar 🪙"><div class="grid grid-cols-2 gap-3"><button onclick="A.play('r')" class="btn !py-3" style="background:#d64545;color:#fff">🔴 Rojo</button><button onclick="A.play('n')" class="btn !py-3" style="background:#1a1a22;color:#fff;border:1px solid var(--bd)">⚫ Negro</button><button onclick="A.play()" class="btn col-span-2">🎲 Jugar (color al azar)</button></div><p class="text-xs mu mt-4">50 % de ganar. Si aciertas duplicas lo apostado; si fallas, lo pierdes.</p></div>
+<div class="c"><h2 class="font-bold text-lg mb-4">Últimas jugadas</h2><div class="space-y-3">${S.rl.map(j=>`<div class="flex justify-between"><span>${j.c=='r'?'🔴':'⚫'} salió ${j.w=='r'?'rojo':'negro'}</span><span class="${j.win?'ac':'mu'}">${j.win?'+':'-'}${j.a} 🪙</span></div>`).join('')||'<p class="mu text-sm">Aún no has jugado.</p>'}</div></div></div>`},
+shop(){return `<div class="c flex flex-wrap gap-2 mb-4"><input id=rn class="in flex-1" placeholder="Premio personalizado"><input id=rc type=number min=1 class="in !w-28" placeholder="Costo 🪙"><button onclick=A.addR() class="btn">＋ Añadir</button></div>
+<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">${S.rw.map(r=>`<div class="c text-center"><div class="text-4xl">${r.i}</div><b class="block mt-1">${esc(r.n)}</b><button onclick="A.price(${r.id})" class="go font-semibold my-2" title="Editar precio">🪙 ${r.c} ✏️</button><button onclick="A.buy(${r.id})" class="btn w-full ${S.coins<r.c?'opacity-40':''}">Comprar</button><button onclick="A.delR(${r.id})" class="mu text-xs mt-2">eliminar</button></div>`).join('')}</div>`},
+stats(){const w=[...Array(7)].map((_,i)=>{const d=ago(6-i);return[d.slice(5),S.log[d]?.t||0]}),mxv=Math.max(1,...w.map(x=>x[1])),tot=S.tasks.length,dn=S.tasks.filter(t=>t.done).length,
+ mo=Object.entries(S.log).filter(([d])=>d>ago(30)).reduce((a,[,v])=>a+v.t,0),wk=h=>h.d.filter(d=>d>ago(7)).length;
+ return `<h2 class="font-bold text-lg mb-1">📈 Comparativa de rutinas</h2><p class="text-xs mu mb-4">Porcentaje de rutinas completadas sobre las programadas. Semana y mes actuales cuentan hasta hoy.</p><div class="grid sm:grid-cols-2 gap-6 mb-8">${cp('Esta semana vs semana pasada',rwk())}${cp('Este mes vs mes pasado',rmo())}</div><div class="grid sm:grid-cols-3 gap-6 mb-6"><div class="c text-center"><div class="text-3xl ac">${tot?Math.round(dn/tot*100):0}%</div><div class="mu text-sm">tasa de éxito</div></div><div class="c text-center"><div class="text-3xl ac">${mo}</div><div class="mu text-sm">tareas en 30 días</div></div><div class="c text-center"><div class="text-3xl ac">${S.st.h}</div><div class="mu text-sm">hábitos marcados</div></div></div>
+ <div class="c mb-6"><b>Tareas por día (últimos 7)</b><div class="flex items-end gap-2 h-36 mt-3">${w.map(([d,n])=>`<div class="flex-1 text-center text-xs"><div class="rounded-t" style="height:${n/mxv*80}px;min-height:3px;background:linear-gradient(var(--a),var(--b))"></div>${n}<br><span class="mu">${d}</span></div>`).join('')}</div></div>
+ <div class="c mb-6"><b>Constancia de hábitos (7 días)</b>${S.habits.map(h=>`<div class="mt-2 text-sm">${esc(h.i)} ${esc(h.n)} <span class="mu">${wk(h)}/7</span><div class="bar"><i style="width:${wk(h)/7*100}%"></i></div></div>`).join('')}</div>
+ <div class="c"><b>🏆 Logros</b><div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">${AC.map((a,i)=>`<div class="c text-center ${S.ach.includes(i)?'':'opacity-30 grayscale'}"><div class="text-3xl">${a[0]}</div><b class="text-sm">${a[1]}</b><div class="text-[11px] mu">${a[2]}</div></div>`).join('')}</div></div>`}
+};
+const TABS=[['dash','🏠','Panel'],['proj','📁','Proyectos'],['tasks','✅','Tareas'],['agenda','📅','Agenda'],['habits','🔁','Rutinas'],['bets','🎰','Casino'],['shop','🛍️','Tienda'],['inv','🎒','Inventario'],['path','🏅','Niveles'],['stats','📊','Progreso']];
+function render(){document.documentElement.dataset.t=S.theme;$('#th').value=S.theme;const l=lv(S.xp),p=Math.min(100,(S.xp-need(l))/(need(l+1)-need(l))*100);
+ $('#hud').innerHTML=bst().map(b=>`<span class="px-2 py-0.5 rounded-full text-xs" style="background:var(--in)">${b}</span>`).join('')+`<span title="Racha de rutinas">🔥 ${rst()}</span><span class="go font-semibold" title="Monedas">🪙 ${S.coins}</span><span class="hidden sm:block w-28"><span class="text-xs mu">Nivel ${l}</span><span class="bar block"><i style="width:${p}%"></i></span></span><span class="sm:hidden">⭐ ${l}</span>`;
+ $('#nav').innerHTML=TABS.map(([k,i,n])=>`<button onclick="A.tab('${k}')" class="tab ${S.tab==k?'on':''}"><span class="text-lg">${i}</span>${n}</button>`).join('');
+ $('#ttl').textContent=H[S.tab][0];$('#sub').textContent=H[S.tab][1];$('#v').innerHTML=V[S.tab]()}
+ren();
+setInterval(()=>{if(rb()){chk();save();render()}},15000);
+</script>
+</body>
+</html>
